@@ -1,0 +1,457 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+(defenum suit
+  :type uint8
+  (cells 0)
+  (orbs  1)
+  (guns  2)
+  (eco   3)
+  )
+
+(deftype card (basic)
+  ((name      string)
+   (suit      suit)
+   (rank      int32)
+   (primality int32)
+   )
+  )
+
+(defconstant *scopa-deck-size* 40)
+
+(defconstant *scopa-hand-size* 3)
+
+(defconstant *scopa-num-players* 4)
+
+(define *scopa-card-catalogue* (new 'static 'array card *scopa-deck-size*
+    (new 'static 'card :name "Ace of Cells"   :rank 1  :suit (suit cells) :primality 16)
+    (new 'static 'card :name "Two of Cells"   :rank 2  :suit (suit cells) :primality 12)
+    (new 'static 'card :name "Three of Cells" :rank 3  :suit (suit cells) :primality 13)
+    (new 'static 'card :name "Four of Cells"  :rank 4  :suit (suit cells) :primality 14)
+    (new 'static 'card :name "Five of Cells"  :rank 5  :suit (suit cells) :primality 15)
+    (new 'static 'card :name "Six of Cells"   :rank 6  :suit (suit cells) :primality 18)
+    (new 'static 'card :name "Seven of Cells" :rank 7  :suit (suit cells) :primality 21)
+    (new 'static 'card :name "Jack of Cells"  :rank 8  :suit (suit cells) :primality 10)
+    (new 'static 'card :name "Queen of Cells" :rank 9  :suit (suit cells) :primality 10)
+    (new 'static 'card :name "King of Cells"  :rank 10 :suit (suit cells) :primality 10)
+
+    (new 'static 'card :name "Ace of Orbs"   :rank 1  :suit (suit orbs) :primality 16)
+    (new 'static 'card :name "Two of Orbs"   :rank 2  :suit (suit orbs) :primality 12)
+    (new 'static 'card :name "Three of Orbs" :rank 3  :suit (suit orbs) :primality 13)
+    (new 'static 'card :name "Four of Orbs"  :rank 4  :suit (suit orbs) :primality 14)
+    (new 'static 'card :name "Five of Orbs"  :rank 5  :suit (suit orbs) :primality 15)
+    (new 'static 'card :name "Six of Orbs"   :rank 6  :suit (suit orbs) :primality 18)
+    (new 'static 'card :name "Seven of Orbs" :rank 7  :suit (suit orbs) :primality 21)
+    (new 'static 'card :name "Jack of Orbs"  :rank 8  :suit (suit orbs) :primality 10)
+    (new 'static 'card :name "Queen of Orbs" :rank 9  :suit (suit orbs) :primality 10)
+    (new 'static 'card :name "King of Orbs"  :rank 10 :suit (suit orbs) :primality 10)
+
+    (new 'static 'card :name "Ace of Guns"   :rank 1  :suit (suit guns) :primality 16)
+    (new 'static 'card :name "Two of Guns"   :rank 2  :suit (suit guns) :primality 12)
+    (new 'static 'card :name "Three of Guns" :rank 3  :suit (suit guns) :primality 13)
+    (new 'static 'card :name "Four of Guns"  :rank 4  :suit (suit guns) :primality 14)
+    (new 'static 'card :name "Five of Guns"  :rank 5  :suit (suit guns) :primality 15)
+    (new 'static 'card :name "Six of Guns"   :rank 6  :suit (suit guns) :primality 18)
+    (new 'static 'card :name "Seven of Guns" :rank 7  :suit (suit guns) :primality 21)
+    (new 'static 'card :name "Jack of Guns"  :rank 8  :suit (suit guns) :primality 10)
+    (new 'static 'card :name "Queen of Guns" :rank 9  :suit (suit guns) :primality 10)
+    (new 'static 'card :name "King of Guns"  :rank 10 :suit (suit guns) :primality 10)
+
+    (new 'static 'card :name "Ace of Eco"   :rank 1  :suit (suit eco) :primality 16)
+    (new 'static 'card :name "Two of Eco"   :rank 2  :suit (suit eco) :primality 12)
+    (new 'static 'card :name "Three of Eco" :rank 3  :suit (suit eco) :primality 13)
+    (new 'static 'card :name "Four of Eco"  :rank 4  :suit (suit eco) :primality 14)
+    (new 'static 'card :name "Five of Eco"  :rank 5  :suit (suit eco) :primality 15)
+    (new 'static 'card :name "Six of Eco"   :rank 6  :suit (suit eco) :primality 18)
+    (new 'static 'card :name "Seven of Eco" :rank 7  :suit (suit eco) :primality 21)
+    (new 'static 'card :name "Jack of Eco"  :rank 8  :suit (suit eco) :primality 10)
+    (new 'static 'card :name "Queen of Eco" :rank 9  :suit (suit eco) :primality 10)
+    (new 'static 'card :name "King of Eco"  :rank 10 :suit (suit eco) :primality 10)
+    )
+  )
+
+(deftype deck (basic) 
+  ((cards      (array card))
+   (top-index  int32)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (empty? (_type_) symbol)
+    (shuffle! (_type_) none)
+    (draw! (_type_) card)
+    (place! (_type_ card) none)
+    )
+  )
+
+(defmethod empty? ((this deck))
+  "Check if the deck is empty"
+  (< (-> this top-index) 0)
+  )
+
+(defmethod shuffle! ((this deck))
+  "Reset the deck and shuffle using the Fisher-Yates algorithm"
+  (dotimes (i *scopa-deck-size*) 
+    (set! (-> this cards i) (-> *scopa-card-catalogue* i))
+    )
+  (countdown (i *scopa-deck-size*)
+    (let ((tgt-index i) 
+          (src-index (rand-vu-int-range 0 i)))
+      (let ((tgt-card (-> this cards tgt-index)))
+        (set! (-> this cards tgt-index) (-> this cards src-index))
+        (set! (-> this cards src-index) tgt-card)
+        )
+      )
+    )
+  (set! (-> this top-index) (- *scopa-deck-size* 1))
+  (none)
+  )
+
+(defmethod draw! ((this deck))
+  "Return the top card of the deck and decrement the top index"
+  (if (not (empty? this))
+    (let ((top-card (-> this cards (-> this top-index))))
+      (dec! (-> this top-index))
+      top-card
+      )
+    )
+  )
+
+(defmethod place! ((this deck) (card card))
+  "Place the given card on the deck and increment the top index"
+  (inc! (-> this top-index))
+  (set! (-> this cards (-> this top-index)) card)
+  (none)
+  )
+
+(defmethod new deck ((allocation symbol) (type-to-make type))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 cards) (new 'static 'boxed-array :type card :allocated-length *scopa-deck-size* :length *scopa-deck-size*))
+    (set! (-> v0-0 top-index) 0)
+    v0-0
+    )
+  )
+
+(defmethod relocate ((this deck) (offset int))
+  (&+! (-> this cards) offset)
+  this
+  )
+
+(defmethod print ((this deck))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tcards: ")
+  (print (-> this cards))
+  (format #t "~%")
+  (format #t "~Ttop-index: ~D~%" (-> this top-index))
+  this
+  )
+
+(deftype player (basic)
+  ((id        int32)
+   (name      string)
+   (hand      (array card))
+   (captures  deck)
+   (sweeps    int32)
+   (score     int32)
+   )
+  (:methods
+    (new (symbol type int string) _type_)
+    (empty? (_type_) symbol)
+    )
+  )
+
+(defmethod empty? ((this player))
+  "Check if the player's hand is empty"
+  (and 
+    (not (-> this hand 0)) 
+    (not (-> this hand 1)) 
+    (not (-> this hand 2))
+    )
+  )
+
+(defmethod new player ((allocation symbol) (type-to-make type) (arg0 int) (arg1 string))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 id) arg0)
+    (set! (-> v0-0 name) arg1)
+    (set! (-> v0-0 hand) (new 'static 'boxed-array :type card :allocated-length 3 :length 3))
+    (set! (-> v0-0 captures) (new 'stack 'deck))
+    (set! (-> v0-0 sweeps) 0)
+    (set! (-> v0-0 score) 0)
+    v0-0
+    )
+  )
+
+(defmethod relocate ((this player) (offset int))
+  (&+! (-> this hand) offset)
+  (relocate (-> this captures) offset)
+  this
+  )
+
+(defmethod print ((this player))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tid: ~D~%" (-> this id))
+  (format #t "~Tname: ~D~%" (-> this name))
+  (format #t "~Thand: ")
+  (print (-> this hand))
+  (format #t "~%")
+  (format #t "~Tcaptures: ~D~%" (-> this captures))
+  (format #t "~Tsweeps: ~D~%" (-> this sweeps))
+  (format #t "~Tscore: ~D~%" (-> this score))
+  this
+  )
+
+(deftype scopa-game (process-drawable)
+  ((players           (array player))
+   (active-player     player)
+   (dealer            player)
+   (winner            player)
+   (board             (array card))
+   (deck              deck)
+   )
+  (:state-methods
+    wait-for-start
+    new-round
+    (deal symbol)
+    play
+    score
+    win
+    )
+  (:methods
+    (next-player (_type_ player) player)
+    (score-point! (_type_ (function player int)) none)
+    )
+  )
+
+(defmethod next-player ((this scopa-game) (current player))
+  "Get the next player after the given player"
+  (-> this players (mod (+ 1 (-> current id)) *scopa-num-players*))
+  )
+
+(defmethod score-point! ((this scopa-game) (scoring-fn (function player int)))
+  "Using a scoring function, determine which player earns a point by getting the highest score (ties receive no points)"
+  (let ((highest-score 0)
+        (highest-player 0)
+        (tie? #f)
+       )
+    (dotimes (p *scopa-num-players*)
+      ;; the scoring function is called to tell us what value each player got
+      (let ((s (scoring-fn (-> this players p))))
+        (cond
+          ((> s highest-score) 
+            (set! highest-score s)
+            (set! highest-player p)
+            (set! tie? #f)
+            )
+          ((= s highest-score) 
+            (set! tie? #t)
+            )
+          )
+        )
+      )
+    (if (not tie?)
+      (inc! (-> this players highest-player score))
+      )
+    )
+  (none)
+  )
+
+(defstate wait-for-start (scopa-game)
+  :virtual #t
+  :code (behavior ()
+    (while (or (not *target*) (not (process-grab? *target* #f)))
+      (suspend)
+      )
+    (set! (-> self dealer) (-> self players (rand-vu-int-range 0 (- *scopa-num-players* 1))))
+    (go-virtual new-round)
+    )
+  )
+
+(defstate new-round (scopa-game)
+  :virtual #t
+  :enter (behavior ()
+    (dotimes (p *scopa-num-players*)
+      (set! (-> self players p hand) (new 'static 'boxed-array :type card :allocated-length 3 :length 3))
+      (set! (-> self players p captures) (new 'stack 'deck))
+      (set! (-> self players p sweeps) 0)
+      )
+    (set! (-> self board) (new 'static 'boxed-array :type card :allocated-length 12 :length 12))
+    (shuffle! (-> self deck))
+    (go-virtual deal #t)
+    )
+  )
+
+(defstate deal (scopa-game)
+  :virtual #t
+  :enter (behavior ((arg0 symbol))
+    (dotimes (h *scopa-hand-size*)
+      (dotimes (p *scopa-num-players*)
+        ;; dealer starts by dealing to the player on the right
+        (let ((player (mod (+ 1 p (-> self dealer id)) *scopa-num-players*))) 
+          (set! (-> self players player hand h) (draw! (-> self deck)))
+          )
+        )
+      )
+    ;; if starting a new round, deal 4 cards to the board
+    (if arg0
+      (let ((kings 0))
+        (dotimes (b 4)
+          (set! (-> self board b) (draw! (-> self deck)))
+          (when (= 10 (-> self board b rank))
+            (inc! kings)
+            )
+          )
+        ;; 3 or more kings on the board is an invalid deal, must retry
+        (when (>= kings 3)
+          (dotimes (h *scopa-hand-size*)
+            (dotimes (p *scopa-num-players*)
+              (set! (-> self players p hand h) #f)
+              )
+            )
+          (dotimes (b 4)
+            (set! (-> self board b) #f)
+            )
+          (go-virtual new-round)
+          )
+        )
+      )
+    (set! (-> self active-player) (next-player self (-> self dealer)))
+    (go-virtual play)
+    )
+  )
+
+(defstate play (scopa-game)
+  :virtual #t
+  :code (behavior ()
+    ;; dealer is always the last player to empty their hand, 
+    ;; check these scenarios and move to the correct states
+    (when (and (= (-> self active-player id) (-> self dealer id)) (empty? (-> self active-player)))
+      (cond
+        ((empty? (-> self deck))
+          (go-virtual score)
+          )
+        (else 
+          (go-virtual deal #f)
+          )
+        )
+      )
+    )
+  )
+
+(defstate score (scopa-game)
+  :virtual #t
+  :enter (behavior ()
+    ;; point 1: who has the most captured cards? (no points for ties)
+    (score-point! self (lambda ((arg0 player))
+        (-> arg0 captures top-index)
+        )
+      )
+
+    ;; point 2: who has the most power cell cards? (no points for ties)
+    (score-point! self (lambda ((arg0 player))
+        (let ((cells 0))
+          (dotimes (c (-> arg0 captures top-index))
+            (if (= (suit cells) (-> arg0 captures cards c suit))
+              (inc! cells)
+              )
+            )
+          cells
+          )
+        )
+      )
+
+    ;; point 3: who has the seven of power cells?
+    (dotimes (p *scopa-num-players*)
+      (dotimes (c (-> self players p captures top-index))
+        (let ((card (-> self players p captures cards c)))
+          (when (and (= (suit cells) (-> card suit)) (= 7 (-> card rank)))
+            (inc! (-> self players p score))
+            (goto found-7c)
+            )
+          )
+        )
+      )
+    (label found-7c)
+
+    ;; point 4: who has the highest primality score? (no points for ties)
+    (score-point! self (lambda ((arg0 player))
+        (let ((best-cell 0)
+              (best-orb 0)
+              (best-gun 0)
+              (best-eco 0))
+          (dotimes (c (-> arg0 captures top-index))
+            (let ((card (-> arg0 captures cards c)))
+              (cond 
+                ((and (= (suit cells) (-> card suit)) (> (-> card primality) best-cell))
+                  (set! best-cell (-> card primality))
+                  )
+                ((and (= (suit orbs) (-> card suit)) (> (-> card primality) best-orb))
+                  (set! best-orb (-> card primality))
+                  )
+                ((and (= (suit guns) (-> card suit)) (> (-> card primality) best-gun))
+                  (set! best-gun (-> card primality))
+                  )
+                ((and (= (suit eco) (-> card suit)) (> (-> card primality) best-eco))
+                  (set! best-eco (-> card primality))
+                  )
+                )
+              )
+            )
+          (+ best-cell best-orb best-gun best-eco)
+          )
+        )
+      )
+
+    ;; extra points: add any sweeps.
+    (dotimes (p *scopa-num-players*)
+      (+! (-> self players p score) (-> self players p sweeps))
+      )
+
+    ;; finally, do we have a winner? 
+    (let ((highest-score 0)
+          (highest-player 0)
+          (tie? #f)
+        )
+      (dotimes (p *scopa-num-players*)
+        ;; the scoring function is called to tell us what value each player got
+        (let ((s (-> self players p score)))
+          (cond
+            ((> s highest-score) 
+              (set! highest-score s)
+              (set! highest-player p)
+              (set! tie? #f)
+              )
+            ((= s highest-score) 
+              (set! tie? #t)
+              )
+            )
+          )
+        )
+      (cond 
+        ((and (not tie?) (>= highest-score 11))
+          (set! (-> self winner) (-> self players highest-player))
+          (go-virtual win)
+          )
+        (else
+          (set! (-> self dealer) (next-player self (-> self dealer)))
+          (go-virtual new-round)
+          )
+        )
+      )
+    )
+  )
+
+(defstate win (scopa-game)
+  :virtual #t
+  :code sleep-code
+  )
+
+(defbehavior scopa-game-init scopa-game ()
+  (set! (-> self deck) (new 'stack 'deck))
+  (set! (-> self board) (new 'static 'boxed-array :type card :allocated-length 12 :length 12))
+  (set! (-> self players) (new 'static 'boxed-array :type player :allocated-length *scopa-num-players* :length *scopa-num-players*))
+  (set! (-> self players 0) (new 'stack 'player 0 "Jak"))
+  (set! (-> self players 1) (new 'stack 'player 1 "Sig"))
+  (set! (-> self players 2) (new 'stack 'player 2 "Torn"))
+  (set! (-> self players 3) (new 'stack 'player 3 "Ashelin"))
+  (go-virtual wait-for-start)
+  (none)
+  )

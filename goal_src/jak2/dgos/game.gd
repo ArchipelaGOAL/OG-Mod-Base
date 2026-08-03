@@ -483,6 +483,7 @@
   "orb-placer.o"  ;; added
   "mod-custom-code.o" ;; added
   "mod-debug.o"
+  "scopa.o" ;; added
   "crimson-guard-level.o";;;;;;;;;;;;;;;;; added for guard-grenade and all the way down.
   "guard-conversation.o"
   "hover-nav-control-h.o" ;added
